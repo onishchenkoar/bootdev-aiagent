@@ -18,18 +18,15 @@ client = OpenAI(
 parser = argparse.ArgumentParser(description="Chatbot")
 parser.add_argument("user_prompt", type=str, help="User prompt")
 args = parser.parse_args()
-user_prompt = args.user_prompt
+messages = [
+    {"role": "user", "content": args.user_prompt},
+]
 
 # %% Prompt LLM
 # user_prompt = "Why is Boot.dev such a great place to learn backend development? Use one paragraph maximum."
 response = client.chat.completions.create(
     model="openrouter/free",
-    messages=[
-        {
-            "role": "user",
-            "content": user_prompt,
-        }
-    ],
+    messages=messages,
 )
 
 
@@ -37,7 +34,7 @@ response = client.chat.completions.create(
 if response.usage is None:
     raise RuntimeError("API request failed")
 
-print(f"User prompt:{user_prompt}")
+print(f"User prompt:{args.user_prompt}")
 print(f"Prompt tokens: {response.usage.prompt_tokens}")
 print(f"Response tokens: {response.usage.completion_tokens}")
 print(f"Response:\n{response.choices[0].message.content}")
