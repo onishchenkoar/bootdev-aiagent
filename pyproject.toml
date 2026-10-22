@@ -8,3 +8,8 @@ dependencies = [
     "openai==2.44.0",
     "python-dotenv==1.1.0",
 ]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.4.0",
+]
