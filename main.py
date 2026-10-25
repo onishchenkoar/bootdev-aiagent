@@ -1,6 +1,6 @@
 import argparse
-import json
 import os
+import sys
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -8,6 +8,8 @@ from openai import OpenAI
 from call_function import available_functions, call_function
 from prompts import system_prompt
 
+
+MAX_LLM_STEPS = 20
 
 def init_llm_client():
     load_dotenv()
@@ -31,12 +33,23 @@ def main():
         print(f"User prompt:{args.user_prompt}")
 
     client = init_llm_client()
+
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": args.user_prompt},
     ]
 
-    call_llm(client, messages, verbose=True)
+    tool_calls = False
+    for _ in range(MAX_LLM_STEPS):
+        tool_calls, llm_response_messages = call_llm(client, messages, verbose=args.verbose)
+        messages.extend(llm_response_messages)
+        if not tool_calls:
+            break
+
+    if tool_calls:
+        print(f"LLM did not manage to do its job in {MAX_LLM_STEPS} iterations.")
+        sys.exit(1)
+
 
 def call_llm(client: OpenAI, messages: list[str], verbose: bool):
     response = client.chat.completions.create(
@@ -48,20 +61,26 @@ def call_llm(client: OpenAI, messages: list[str], verbose: bool):
     if response.usage is None:
         raise RuntimeError("API request failed")
 
-    message = response.choices[0].message
-    if message.tool_calls:
-        for tool_call in message.tool_calls:
-            # function_args = json.loads(tool_call.function.arguments or "{}")
-            # print(f"Calling function: {tool_call.function.name}({function_args})")
-            result_message = call_function(tool_call, verbose)
-            if not result_message["content"]:
+    llm_response_message = response.choices[0].message
+    response_messages = [llm_response_message]
+    if llm_response_message.tool_calls:
+        tool_calls = True
+        for tool_call in llm_response_message.tool_calls:
+            tool_response_message = call_function(tool_call, verbose)
+            if not tool_response_message["content"]:
                 raise Exception("Something wrong: the response content is empty")
+            response_messages.append(tool_response_message)
             if verbose:
-                print(f"-> {result_message['content']}")
+                print(f"-> {tool_response_message['content']}")
+    else:
+        tool_calls = False
+        print(f"Final response: {llm_response_message.content}")
 
     if verbose:
         print(f"Prompt tokens: {response.usage.prompt_tokens}")
         print(f"Response tokens: {response.usage.completion_tokens}")
+
+    return (tool_calls, response_messages)
 
 if __name__ == "__main__":
     main()
