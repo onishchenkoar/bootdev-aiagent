@@ -19,3 +19,25 @@ def write_file(working_directory: str, file_path: str, content: str) -> str:
         f.write(content)
 
     return f'Successfully wrote to "{file_path}" ({len(content)} characters written)'
+
+schema_write_file = {
+    "type": "function",
+    "function": {
+        "name": "write_file",
+        "description": "Writes text to a file.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "Path to a file to write text to, relative to the working directory (default is the working directory itself)",
+                },
+                "content": {
+                    "type": "string",
+                    "description": "Content that will be written to the file on disk.",
+                },
+            },
+            "required": ["file_path", "content"]
+        },
+    },
+}
